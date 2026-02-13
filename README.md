@@ -1,6 +1,6 @@
 # ownthegrid
 
-real-time collaborative grid where users claim tiles on a shared 50x40 board. updates are delivered over websockets, persisted in postgres, and broadcast through redis pub/sub.
+real-time collaborative grid where users claim tiles on a shared board. updates are delivered over websockets, persisted in postgres, and broadcast through redis pub/sub.
 
 ## requirements
 
