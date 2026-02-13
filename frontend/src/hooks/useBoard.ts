@@ -9,7 +9,7 @@ export const useBoard = () => {
   const initBoard = useBoardStore((state) => state.initBoard);
   const pendingClaims = useBoardStore((state) => state.pendingClaims);
   const optimisticallyClaimTile = useBoardStore((state) => state.optimisticallyClaimTile);
-  const { currentUser, optimisticallyIncrementTileCount } = useUserStore();
+  const currentUser = useUserStore((state) => state.currentUser);
   const send = useWSStore((state) => state.send);
 
   useEffect(() => {
@@ -25,10 +25,9 @@ export const useBoard = () => {
       if (!currentUser) return;
       if (pendingClaims.has(tileId)) return;
       optimisticallyClaimTile(tileId, currentUser.id, currentUser.color);
-      optimisticallyIncrementTileCount(currentUser.id);
       send('CLAIM_TILE', { tileId });
     },
-    [currentUser, pendingClaims, optimisticallyClaimTile, optimisticallyIncrementTileCount, send]
+    [currentUser, pendingClaims, optimisticallyClaimTile, send]
   );
 
   return { handleClaim };

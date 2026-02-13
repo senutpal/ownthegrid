@@ -23,12 +23,57 @@ const claimSoundUrl = '/assets/sounds/claim.mp3';
 export const useWebSocket = () => {
   const wsRef = useRef<WebSocketService | null>(null);
   const { initBoard, applyTileClaimed, revertOptimisticClaim } = useBoardStore();
-  const { currentUser, setLeaderboard, setOnlineUsers, optimisticallyAddUser, confirmTileCount, revertTileCount } = useUserStore();
+  const currentUser = useUserStore((s) => s.currentUser);
+  const setLeaderboard = useUserStore((s) => s.setLeaderboard);
+  const setOnlineUsers = useUserStore((s) => s.setOnlineUsers);
+  const optimisticallyAddUser = useUserStore((s) => s.optimisticallyAddUser);
+  const confirmTileCount = useUserStore((s) => s.confirmTileCount);
+  const revertTileCount = useUserStore((s) => s.revertTileCount);
   const { setStatus, setSender } = useWSStore();
-  const { addToast } = useUIStore();
+  const addToast = useUIStore((s) => s.addToast);
+
+  const refs = useRef({
+    currentUser,
+    initBoard,
+    applyTileClaimed,
+    revertOptimisticClaim,
+    setLeaderboard,
+    setOnlineUsers,
+    optimisticallyAddUser,
+    confirmTileCount,
+    revertTileCount,
+    addToast,
+  });
+
+  useEffect(() => {
+    refs.current = {
+      currentUser,
+      initBoard,
+      applyTileClaimed,
+      revertOptimisticClaim,
+      setLeaderboard,
+      setOnlineUsers,
+      optimisticallyAddUser,
+      confirmTileCount,
+      revertTileCount,
+      addToast,
+    };
+  });
 
   useEffect(() => {
     if (!currentUser?.id) return;
+
+    const {
+      initBoard,
+      applyTileClaimed,
+      revertOptimisticClaim,
+      setLeaderboard,
+      setOnlineUsers,
+      optimisticallyAddUser,
+      confirmTileCount,
+      revertTileCount,
+      addToast,
+    } = refs.current;
 
     const wsBase = (import.meta.env.VITE_WS_URL as string | undefined) ?? window.location.origin;
     const normalizedBase = wsBase.startsWith('http') ? wsBase.replace(/^http/, 'ws') : wsBase;
@@ -40,15 +85,13 @@ export const useWebSocket = () => {
     const ws = new WebSocketService(wsUrl.toString(), setStatus);
     wsRef.current = ws;
 
-    if (currentUser) {
-      optimisticallyAddUser({
-        id: currentUser.id,
-        username: currentUser.username,
-        color: currentUser.color,
-        createdAt: new Date().toISOString(),
-        lastSeen: new Date().toISOString(),
-      });
-    }
+    optimisticallyAddUser({
+      id: currentUser.id,
+      username: currentUser.username,
+      color: currentUser.color,
+      createdAt: new Date().toISOString(),
+      lastSeen: new Date().toISOString(),
+    });
 
     ws.on<InitBoardPayload>('INIT_BOARD', ({ payload }) => {
       initBoard(
@@ -59,6 +102,7 @@ export const useWebSocket = () => {
     });
 
     ws.on<TileClaimedPayload>('TILE_CLAIMED', ({ payload }) => {
+      const { currentUser: user } = refs.current;
       applyTileClaimed(payload);
       confirmTileCount(payload.userId);
       const tile = document.querySelector(`[data-tile-id="${payload.tileId}"]`);
@@ -66,7 +110,7 @@ export const useWebSocket = () => {
         tile.classList.add(tileStyles.justClaimed);
         window.setTimeout(() => tile.classList.remove(tileStyles.justClaimed), 280);
       }
-      if (payload.userId === currentUser.id) {
+      if (payload.userId === user?.id) {
         const audio = new Audio(claimSoundUrl);
         audio.volume = 0.4;
         void audio.play().catch(() => undefined);
@@ -74,9 +118,10 @@ export const useWebSocket = () => {
     });
 
     ws.on<ClaimRejectedPayload>('CLAIM_REJECTED', ({ payload }) => {
+      const { currentUser: user } = refs.current;
       revertOptimisticClaim(payload.tileId);
-      if (currentUser) {
-        revertTileCount(currentUser.id, false);
+      if (user) {
+        revertTileCount(user.id, false);
       }
       const message =
         payload.reason === 'ALREADY_CLAIMED'
@@ -92,7 +137,8 @@ export const useWebSocket = () => {
     });
 
     ws.on<UserJoinedPayload>('USER_JOINED', ({ payload }) => {
-      if (payload.userId !== currentUser?.id) {
+      const { currentUser: user } = refs.current;
+      if (payload.userId !== user?.id) {
         addToast({
           id: `join-${payload.userId}-${Date.now()}`,
           message: `${payload.username} joined the board`,
@@ -100,7 +146,7 @@ export const useWebSocket = () => {
         });
       }
       setOnlineUsers((prev) => {
-        if (prev.some((user) => user.id === payload.userId)) return prev;
+        if (prev.some((u) => u.id === payload.userId)) return prev;
         const nextUser: User = {
           id: payload.userId,
           username: payload.username,
@@ -144,22 +190,7 @@ export const useWebSocket = () => {
       ws.disconnect();
       setSender(null);
     };
-  }, [
-    currentUser?.id,
-    currentUser?.token,
-    currentUser,
-    initBoard,
-    applyTileClaimed,
-    revertOptimisticClaim,
-    setLeaderboard,
-    addToast,
-    setStatus,
-    setOnlineUsers,
-    setSender,
-    optimisticallyAddUser,
-    confirmTileCount,
-    revertTileCount,
-  ]);
+  }, [currentUser?.id, currentUser?.token]);
 
   const claimTile = useCallback((tileId: number) => {
     wsRef.current?.send('CLAIM_TILE', { tileId });
