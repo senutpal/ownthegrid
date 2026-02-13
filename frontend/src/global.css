@@ -1,0 +1,16 @@
+@import "tailwindcss";
+
+body {
+  margin: 0;
+  font-family: "DM Sans", "IBM Plex Mono", "Segoe UI", sans-serif;
+  color: #111111;
+  background-color: #ffffff;
+}
+
+.ui-text {
+  font-family: "IBM Plex Mono", "DM Sans", "Segoe UI", monospace;
+}
+
+* {
+  box-sizing: border-box;
+}
