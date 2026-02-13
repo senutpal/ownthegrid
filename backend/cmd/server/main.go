@@ -28,6 +28,10 @@ func main() {
 	pgDB := db.NewPostgres(cfg.DatabaseURL)
 	defer pgDB.Close()
 
+	if err := db.Migrate(pgDB); err != nil {
+		log.Printf("Warning: Migration failed: %v", err)
+	}
+
 	redisClient := db.NewRedis(cfg.RedisURL)
 	defer redisClient.Close()
 
